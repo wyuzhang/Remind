@@ -24,6 +24,8 @@
 #import "RedpacketOpenConst.h"
 #import "RedPacketChatViewController.h"
 
+#import "RemindAvManager.h"
+
 
 //两次提示的默认间隔
 static const CGFloat kDefaultPlaySoundInterval = 3.0;
@@ -31,7 +33,7 @@ static NSString *kMessageType = @"MessageType";
 static NSString *kConversationChatter = @"ConversationChatter";
 static NSString *kGroupName = @"GroupName";
 
-@interface MainViewController () <UIAlertViewDelegate, IChatManagerDelegate, EMCallManagerDelegate>
+@interface MainViewController () <UIAlertViewDelegate, IChatManagerDelegate, EMCallManagerDelegate, RemindSenderDelegate, RemindReceiverDelegate>
 {
     ConversationListController *_chatListVC;
     ContactListViewController *_contactsVC;
@@ -83,6 +85,17 @@ static NSString *kGroupName = @"GroupName";
     
     [self setupUnreadMessageCount];
     [self setupUntreatedApplyCount];
+}
+
+- (void)configRemindAvManager:(BOOL)isConfig {
+    if (isConfig) {
+        [[RemindAvManager manager] addSenderDelegate:self];
+        [[RemindAvManager manager] addReceiverDelegate:self];
+    }
+    else {
+        [[RemindAvManager manager] removeSenderDelegate];
+        [[RemindAvManager manager] removeReceiverDelegate];
+    }
 }
 
 - (void)didReceiveMemoryWarning

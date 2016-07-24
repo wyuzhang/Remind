@@ -33,6 +33,10 @@ typedef NS_ENUM(int, CallMessageType) {
     NSTimer *_timer;
 }
 
+@property (nonatomic, assign) id<RemindSenderDelegate> senderDelegate;
+
+@property (nonatomic, assign) id<RemindReceiverDelegate> receiverDelegate;
+
 @end
 
 @implementation RemindAvManager
@@ -79,6 +83,26 @@ typedef NS_ENUM(int, CallMessageType) {
 - (void)didReceiveOfflineCmdMessages:(NSArray *)offlineCmdMessages {
 }
 
+
+#pragma mark - 发送方委托
+
+- (void)addReceiverDelegate:(id<RemindSenderDelegate>)delegate {
+    self.senderDelegate = delegate;
+}
+
+- (void)removeReceiverDelegate {
+    self.senderDelegate = nil;
+}
+
+#pragma mark - 接收方委托
+
+- (void)addSenderDelegate:(id<RemindReceiverDelegate>)delegate {
+    self.receiverDelegate = delegate;
+}
+
+- (void)removeSenderDelegate {
+    self.receiverDelegate = nil;
+}
 
 #pragma mark - public method
 

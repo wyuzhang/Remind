@@ -9,9 +9,36 @@
 #import <Foundation/Foundation.h>
 
 
+@protocol RemindSenderDelegate <NSObject>
+
+@optional
+
+@end
+
+@protocol RemindReceiverDelegate <NSObject>
+
+@optional
+
+@end
+
+
 @interface RemindAvManager : NSObject
 
 + (RemindAvManager *)manager;
+
+#pragma mark - 发送方委托
+
+- (void)addReceiverDelegate:(id<RemindSenderDelegate>)delegate;
+
+- (void)removeReceiverDelegate;
+
+#pragma mark - 接收方委托
+
+- (void)addSenderDelegate:(id<RemindReceiverDelegate>)delegate;
+
+- (void)removeSenderDelegate;
+
+#pragma mark -
 
 - (void)sendRemindCMD:(NSString *)chatter sessionType:(EMCallSessionType)sessionType;
 
