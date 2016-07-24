@@ -85,6 +85,8 @@ static NSString *kGroupName = @"GroupName";
     
     [self setupUnreadMessageCount];
     [self setupUntreatedApplyCount];
+    
+    [self configRemindAvManager:YES];
 }
 
 - (void)configRemindAvManager:(BOOL)isConfig {
@@ -106,6 +108,7 @@ static NSString *kGroupName = @"GroupName";
 - (void)dealloc
 {
     [self unregisterNotifications];
+    [self configRemindAvManager:NO];
 }
 
 #pragma mark - UITabBarDelegate
