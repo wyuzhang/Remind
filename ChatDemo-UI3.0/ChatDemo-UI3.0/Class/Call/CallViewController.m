@@ -834,6 +834,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         if (callSession && !error) {
             _callSession = nil;
             _callSession = callSession;
+#warning 要提前设置视频通话对方图像的显示区域
+            _callSession.displayView = _openGLView;
+
         }
     }
 }
