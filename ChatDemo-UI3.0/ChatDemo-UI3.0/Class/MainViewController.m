@@ -962,6 +962,7 @@ static NSString *kGroupName = @"GroupName";
 //被叫收到主叫的提醒
 - (void)calledPartyReceiveRemind:(EMMessage *)message callSessionType:(EMCallSessionType)callSessionType {
     if (message.isOfflineMessage) {
+        //离线推送，不创建本地通知
         if (_callController) {
             return;
         }
