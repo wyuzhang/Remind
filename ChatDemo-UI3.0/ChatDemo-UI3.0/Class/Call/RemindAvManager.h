@@ -8,16 +8,18 @@
 
 #import <Foundation/Foundation.h>
 
+//cmd消息中ext特殊字段
+#define CALL_PARTY_USER                     @"call_party_user"  //主叫方
+#define CALLED_PARTY_USER                   @"called_party_user"  //被叫方
+#define CALL_TYPE                           @"call_type"  //呼叫类型  int类型，0是音频，1是视频
 
-@protocol RemindSenderDelegate <NSObject>
-
-@optional
-
-@end
-
-@protocol RemindReceiverDelegate <NSObject>
+@protocol RemindAvDelegate <NSObject>
 
 @optional
+
+- (void)calledPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType;
+
+- (void)callPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType;
 
 @end
 
@@ -26,21 +28,17 @@
 
 + (RemindAvManager *)manager;
 
-#pragma mark - 发送方委托
+#pragma mark - 委托
 
-- (void)addReceiverDelegate:(id<RemindSenderDelegate>)delegate;
+- (void)addDelegate:(id<RemindAvDelegate>)delegate;
 
-- (void)removeReceiverDelegate;
-
-#pragma mark - 接收方委托
-
-- (void)addSenderDelegate:(id<RemindReceiverDelegate>)delegate;
-
-- (void)removeSenderDelegate;
+- (void)removeDelegate;
 
 #pragma mark -
 
 - (void)sendRemindCMD:(NSString *)chatter sessionType:(EMCallSessionType)sessionType;
+
+- (void)sendRemindMessage:(NSString *)chatter sessionType:(EMCallSessionType)sessionType;
 
 - (void)startRunLoop:(id)target action:(SEL)action;
 

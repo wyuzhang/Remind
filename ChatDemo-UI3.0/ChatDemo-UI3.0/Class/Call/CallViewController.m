@@ -103,10 +103,6 @@
         _statusLabel.text = NSLocalizedString(@"call.connecting", @"Connecting...");
         [_actionView addSubview:_hangupButton];
     }
-    
-#ifdef REMIND_AV
-    [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
-#endif
 }
 
 - (void)runLoopEnd {
@@ -649,13 +645,19 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 str = NSLocalizedString(@"call.in", @"In the call...");
             }
         }
-        if (reason == eCallReasonNull) {
-            [[RemindAvManager manager] stopRunLoop];
-            [[RemindAvManager manager] showAlert:@"被叫用户不在线，请稍后重试"];
+        if (reason == eCallReasonNull || reason == eCallReasonNoResponse) {
+            //不在线 || 在后台
+//            [[RemindAvManager manager] stopRunLoop];
+//            [[RemindAvManager manager] showAlert:@"被叫用户不在线，请稍后重试"];
+#ifdef REMIND_AV
+            [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
+            [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
+#endif
         }
-        [self _insertMessageWithStr:str];
-        [self _close];
-        
+        else {
+            [self _insertMessageWithStr:str];
+            [self _close];
+        }
     }
     else if (callSession.status == eCallSessionStatusAccepted)
     {
@@ -790,6 +792,31 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         NSUserDefaults *ud = [NSUserDefaults standardUserDefaults];
         [ud setObject:value forKey:kLocalCallBitrate];
         [ud synchronize];
+    }
+}
+
+- (void)reloadCallSession {
+    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonHangup];
+    if (error) {
+        EMError *error = nil;
+        NSString *chatter = _callSession.sessionChatter;
+        EMCallSessionType type = _callSession.type;
+        EMCallSession *callSession = nil;
+        if (type == eCallSessionTypeAudio) {
+            callSession = [[EaseMob sharedInstance].callManager asyncMakeVoiceCall:chatter timeout:50 error:&error];
+        }
+        else if (type == eCallSessionTypeVideo){
+            if (![CallViewController canVideo]) {
+                [self _close];
+                return;
+            }
+            callSession = [[EaseMob sharedInstance].callManager asyncMakeVideoCall:chatter timeout:50 error:&error];
+        }
+        
+        if (callSession && !error) {
+            _callSession = nil;
+            _callSession = callSession;
+        }
     }
 }
 

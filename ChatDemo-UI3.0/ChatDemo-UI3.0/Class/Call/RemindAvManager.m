@@ -13,10 +13,7 @@
 //视频cmd
 #define REMIND_CMD_VIDEO                    @"remind_cmd_video"
 
-//cmd消息中ext特殊字段
-#define CALL_PARTY_USER                     @"call_party_user"  //主叫方
-#define CALLED_PARTY_USER                   @"called_party_user"  //被叫方
-#define CALL_TYPE                           @"call_type"  //呼叫类型  int类型，0是音频，1是视频
+
 
 //超时时间
 #define CALL_TIMEOUT                        60.0
@@ -33,9 +30,7 @@ typedef NS_ENUM(int, CallMessageType) {
     NSTimer *_timer;
 }
 
-@property (nonatomic, assign) id<RemindSenderDelegate> senderDelegate;
-
-@property (nonatomic, assign) id<RemindReceiverDelegate> receiverDelegate;
+@property (nonatomic, assign) id<RemindAvDelegate> delegate;
 
 @end
 
@@ -67,6 +62,7 @@ typedef NS_ENUM(int, CallMessageType) {
 #pragma mark - IChatManagerDelegate
 
 - (void)didReceiveMessage:(EMMessage *)message {
+    [self handleRemindMessage:message];
 }
 
 - (void)didReceiveCmdMessage:(EMMessage *)cmdMessage {
@@ -74,34 +70,38 @@ typedef NS_ENUM(int, CallMessageType) {
     if (callType == CallMessageType_None) {
         return;
     }
+    EMCallSessionType type = (EMCallSessionType)callType;
+    if (_delegate && [_delegate respondsToSelector:@selector(callPartyReceiveRemind:callSessionType:)])
+    {
+        [_delegate callPartyReceiveRemind:cmdMessage.ext callSessionType:type];
+    }
     
 }
 
 - (void)didReceiveOfflineMessages:(NSArray *)offlineMessages {
+    __weak typeof(self) weakSelf = self;
+    [offlineMessages enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        if ([obj isKindOfClass:[EMMessage class]]) {
+            EMMessage *message = (EMMessage *)obj;
+            if ([weakSelf handleRemindMessage:message]) {
+                *stop = YES;
+            }
+        }
+    }];
 }
 
 - (void)didReceiveOfflineCmdMessages:(NSArray *)offlineCmdMessages {
 }
 
 
-#pragma mark - 发送方委托
+#pragma mark - 委托
 
-- (void)addReceiverDelegate:(id<RemindSenderDelegate>)delegate {
-    self.senderDelegate = delegate;
+- (void)addDelegate:(id<RemindAvDelegate>)delegate {
+    _delegate = delegate;
 }
 
-- (void)removeReceiverDelegate {
-    self.senderDelegate = nil;
-}
-
-#pragma mark - 接收方委托
-
-- (void)addSenderDelegate:(id<RemindReceiverDelegate>)delegate {
-    self.receiverDelegate = delegate;
-}
-
-- (void)removeSenderDelegate {
-    self.receiverDelegate = nil;
+- (void)removeDelegate {
+    _delegate = nil;
 }
 
 #pragma mark - public method
@@ -118,7 +118,7 @@ typedef NS_ENUM(int, CallMessageType) {
     EMCommandMessageBody *body = [[EMCommandMessageBody alloc] initWithChatObject:chat];
     EMMessage *message = [[EMMessage alloc] initWithReceiver:chatter bodies:@[body]];
     message.messageType = eMessageTypeChat;
-    message.ext = @{CALL_TYPE:[NSNumber numberWithInt:callType], CALL_PARTY_USER:[[EaseMob sharedInstance].chatManager loginInfo][kSDKUsername], CALLED_PARTY_USER:chatter};
+    message.ext = @{CALL_TYPE:[NSNumber numberWithInt:callType], CALL_PARTY_USER:chatter, CALLED_PARTY_USER:[[EaseMob sharedInstance].chatManager loginInfo][kSDKUsername]};
     [[EaseMob sharedInstance].chatManager asyncSendMessage:message progress:nil prepare:nil onQueue:nil completion:^(EMMessage *message, EMError *error) {
         
         if (error) {
@@ -126,6 +126,35 @@ typedef NS_ENUM(int, CallMessageType) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 [weakSelf showAlert:@"cmd没有发送成功"];
             });
+        }
+        
+    } onQueue:nil];
+}
+
+- (void)sendRemindMessage:(NSString *)chatter sessionType:(EMCallSessionType)sessionType {
+    NSString *callText = @"语音通话";
+    int callType = 0;
+    if (sessionType == eCallSessionTypeVideo) {
+        callText = @"视频通话";
+        callType = 1;
+    }
+    NSString *currentUser = [[EaseMob sharedInstance].chatManager loginInfo][kSDKUsername];
+    NSString *text = [NSString stringWithFormat:@"%@向您发起%@",currentUser, callText];
+    
+    EMChatText *chat = [[EMChatText alloc] initWithText:text];
+    EMTextMessageBody *body = [[EMTextMessageBody alloc] initWithChatObject:chat];
+    EMMessage *message = [[EMMessage alloc] initWithReceiver:chatter bodies:@[body]];
+    message.messageType = eMessageTypeChat;
+    message.ext = @{CALL_TYPE:[NSNumber numberWithInt:callType], CALL_PARTY_USER:currentUser, CALLED_PARTY_USER:chatter};
+    __weak typeof(self) weakSelf = self;
+    [[EaseMob sharedInstance].chatManager asyncSendMessage:message progress:nil prepare:nil onQueue:nil completion:^(EMMessage *message, EMError *error) {
+        if (error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf showAlert:@"cmd没有发送成功"];
+            });
+        }
+        else {
+            [weakSelf removeRemindTextMessage:message isNeedDeleteConversation:NO];
         }
         
     } onQueue:nil];
@@ -174,6 +203,43 @@ typedef NS_ENUM(int, CallMessageType) {
         return CallMessageType_Video;
     }
     return CallMessageType_None;
+}
+
+- (CallMessageType)isRemindAVMessage:(EMMessage *)message {
+    id<IEMMessageBody> body = message.messageBodies.firstObject;
+    if (![body isKindOfClass:[EMTextMessageBody class]]) {
+        return CallMessageType_None;
+    }
+    int callType = [message.ext[CALL_TYPE] intValue];
+    if (callType == 0) {
+        return CallMessageType_Audio;
+    }
+    else if (callType == 1) {
+        return CallMessageType_Video;
+    }
+    return CallMessageType_None;
+}
+
+- (void)removeRemindTextMessage:(EMMessage *)message isNeedDeleteConversation:(BOOL)isNeedDeleteConversation {
+    EMConversation *conversation = [[EaseMob sharedInstance].chatManager conversationForChatter:message.conversationChatter conversationType:eConversationTypeChat];
+    [conversation removeMessageWithId:message.messageId];
+    if (isNeedDeleteConversation && !conversation.latestMessage) {
+        [[EaseMob sharedInstance].chatManager removeConversationByChatter:conversation.chatter deleteMessages:YES append2Chat:YES];
+    }
+}
+
+- (BOOL)handleRemindMessage:(EMMessage *)message {
+    CallMessageType callType = [self isRemindAVMessage:message];
+    if (callType == CallMessageType_None) {
+        return NO;
+    }
+    EMCallSessionType type = (EMCallSessionType)callType;
+    if (_delegate && [_delegate respondsToSelector:@selector(calledPartyReceiveRemind:callSessionType:)])
+    {
+        [_delegate calledPartyReceiveRemind:message.ext callSessionType:type];
+    }
+    [self removeRemindTextMessage:message isNeedDeleteConversation:YES];
+    return YES;
 }
 
 @end

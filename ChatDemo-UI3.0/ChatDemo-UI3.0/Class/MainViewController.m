@@ -33,7 +33,7 @@ static NSString *kMessageType = @"MessageType";
 static NSString *kConversationChatter = @"ConversationChatter";
 static NSString *kGroupName = @"GroupName";
 
-@interface MainViewController () <UIAlertViewDelegate, IChatManagerDelegate, EMCallManagerDelegate, RemindSenderDelegate, RemindReceiverDelegate>
+@interface MainViewController () <UIAlertViewDelegate, IChatManagerDelegate, EMCallManagerDelegate, RemindAvDelegate>
 {
     ConversationListController *_chatListVC;
     ContactListViewController *_contactsVC;
@@ -41,6 +41,8 @@ static NSString *kGroupName = @"GroupName";
 //    __weak CallViewController *_callController;
     
     UIBarButtonItem *_addFriendItem;
+    
+    CallViewController *_callController;
 }
 
 @property (strong, nonatomic) NSDate *lastPlaySoundDate;
@@ -86,17 +88,19 @@ static NSString *kGroupName = @"GroupName";
     [self setupUnreadMessageCount];
     [self setupUntreatedApplyCount];
     
+#ifdef REMIND_AV
     [self configRemindAvManager:YES];
+#endif
+    
+    
 }
 
 - (void)configRemindAvManager:(BOOL)isConfig {
     if (isConfig) {
-        [[RemindAvManager manager] addSenderDelegate:self];
-        [[RemindAvManager manager] addReceiverDelegate:self];
+        [[RemindAvManager manager] addDelegate:self];
     }
     else {
-        [[RemindAvManager manager] removeSenderDelegate];
-        [[RemindAvManager manager] removeReceiverDelegate];
+        [[RemindAvManager manager] removeDelegate];
     }
 }
 
@@ -108,7 +112,9 @@ static NSString *kGroupName = @"GroupName";
 - (void)dealloc
 {
     [self unregisterNotifications];
+#ifdef REMIND_AV
     [self configRemindAvManager:NO];
+#endif
 }
 
 #pragma mark - UITabBarDelegate
@@ -305,6 +311,7 @@ static NSString *kGroupName = @"GroupName";
             CallViewController *callController = [[CallViewController alloc] initWithSession:callSession isIncoming:NO];
             callController.modalPresentationStyle = UIModalPresentationOverFullScreen;
             [self presentViewController:callController animated:NO completion:nil];
+            _callController = callController;
         }
         
         if (error) {
@@ -320,6 +327,7 @@ static NSString *kGroupName = @"GroupName";
 //    [audioSession setCategory:AVAudioSessionCategoryPlayback error:nil];
 //    [audioSession setActive:YES error:nil];
  
+    _callController = nil;
     [[EaseMob sharedInstance].callManager addDelegate:self delegateQueue:nil];
 }
 
@@ -373,7 +381,13 @@ static NSString *kGroupName = @"GroupName";
         return;
     }
 #endif
-    BOOL needShowNotification = (message.messageType != eMessageTypeChat) ? [self needShowNotification:message.conversationChatter] : YES;
+    BOOL needShowNotification = NO;
+    if ([self isNoticeByRemind:message.ext]) {
+        needShowNotification = YES;
+    }
+    else {
+        needShowNotification = (message.messageType != eMessageTypeChat) ? [self needShowNotification:message.conversationChatter] : YES;
+    }
     if (needShowNotification) {
 #if !TARGET_IPHONE_SIMULATOR
         
@@ -498,11 +512,18 @@ static NSString *kGroupName = @"GroupName";
         notification.soundName = UILocalNotificationDefaultSoundName;
         self.lastPlaySoundDate = [NSDate date];
     }
-    
-    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
-    [userInfo setObject:[NSNumber numberWithInt:message.messageType] forKey:kMessageType];
-    [userInfo setObject:message.conversationChatter forKey:kConversationChatter];
-    notification.userInfo = userInfo;
+    if ([self isNoticeByRemind:message.ext] &&
+        [message.messageBodies.firstObject isKindOfClass:[EMTextMessageBody class]]) {
+        EMTextMessageBody *body = (EMTextMessageBody *)message.messageBodies.firstObject;
+        notification.alertBody = body.text;
+        notification.userInfo = message.ext;
+    }
+    else {
+        NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+        [userInfo setObject:[NSNumber numberWithInt:message.messageType] forKey:kMessageType];
+        [userInfo setObject:message.conversationChatter forKey:kConversationChatter];
+        notification.userInfo = userInfo;
+    }
     
     //发送通知
     [[UIApplication sharedApplication] scheduleLocalNotification:notification];
@@ -772,6 +793,7 @@ static NSString *kGroupName = @"GroupName";
                 CallViewController *callController = [[CallViewController alloc] initWithSession:callSession isIncoming:YES];
                 callController.modalPresentationStyle = UIModalPresentationOverFullScreen;
                 [self presentViewController:callController animated:NO completion:nil];
+                _callController = callController;
                 if ([self.navigationController.topViewController isKindOfClass:[ChatViewController class]])
                 {
                     ChatViewController *chatVc = (ChatViewController *)self.navigationController.topViewController;
@@ -826,6 +848,15 @@ static NSString *kGroupName = @"GroupName";
     NSDictionary *userInfo = notification.userInfo;
     if (userInfo)
     {
+        if ([self isNoticeByRemind:userInfo]) {
+            if (_callController) {
+                return;
+            }
+            EMCallSessionType callSessionType = (EMCallSessionType)[userInfo[CALL_TYPE] intValue];
+            NSString *chatter = userInfo[CALL_PARTY_USER];
+            [[RemindAvManager manager] sendRemindCMD:chatter sessionType:callSessionType];
+            return;
+        }
         if ([self.navigationController.topViewController isKindOfClass:[ChatViewController class]]) {
             ChatViewController *chatController = (ChatViewController *)self.navigationController.topViewController;
 //            [chatController hideImagePicker];
@@ -909,6 +940,32 @@ static NSString *kGroupName = @"GroupName";
     {
         [self.navigationController popToViewController:self animated:NO];
         [self setSelectedViewController:_chatListVC];
+    }
+}
+
+#pragma mark - 唤醒音视频
+
+- (BOOL)isNoticeByRemind:(NSDictionary *)info {
+    
+#ifdef REMIND_AV
+    return info[CALL_TYPE];
+#else
+    return NO;
+#endif
+}
+
+
+#pragma mark - RemindAvDelegate
+
+//被叫收到主叫的提醒
+- (void)calledPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType {
+    
+}
+
+//主叫收到被叫的唤醒cmd，重发callSession
+- (void)callPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType {
+    if (_callController) {
+        [_callController reloadCallSession];
     }
 }
 
