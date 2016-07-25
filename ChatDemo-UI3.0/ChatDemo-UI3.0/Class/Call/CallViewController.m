@@ -30,6 +30,8 @@
     UILabel *_remoteBitrateLabel;
     UILabel *_localBitrateLabel;
     NSTimer *_propertyTimer;
+    BOOL _isHangupSelf;
+    BOOL _isFailureSelf;
 }
 
 @end
@@ -612,6 +614,13 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self _stopRing];
     if(error){
         _statusLabel.text = NSLocalizedString(@"call.connectFailed", @"Connect failed");
+#ifdef REMIND_AV
+        if (error.errorCode == EMErrorCallRemoteOffline) {
+            [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
+            [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
+            return;
+        }
+#endif
         [self _insertMessageWithStr:NSLocalizedString(@"call.failed", @"Call failed")];
         
         UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"error", @"Error") message:error.description delegate:self cancelButtonTitle:NSLocalizedString(@"ok", @"OK") otherButtonTitles:nil, nil];
@@ -645,7 +654,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 str = NSLocalizedString(@"call.in", @"In the call...");
             }
         }
-        if (reason == eCallReasonNull || reason == eCallReasonNoResponse) {
+        if (reason == eCallReasonNull || reason == eCallReasonNoResponse || (reason == eCallReasonHangup && !_isHangupSelf)) {
             //不在线 || 在后台
 //            [[RemindAvManager manager] stopRunLoop];
 //            [[RemindAvManager manager] showAlert:@"被叫用户不在线，请稍后重试"];
@@ -653,6 +662,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
             [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
 #endif
+        }
+        else if (reason == eCallReasonFailure) {
+            _isFailureSelf = NO;
         }
         else {
             [self _insertMessageWithStr:str];
@@ -670,6 +682,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         else{
             _statusLabel.text = NSLocalizedString(@"call.speak", @"Can speak...");
         }
+        [[RemindAvManager manager] stopRunLoop];
         _timeLength = 0;
         _timeTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(timeTimerAction:) userInfo:nil repeats:YES];
 
@@ -760,6 +773,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 {
     [[RemindAvManager manager] stopRunLoop];
     _openGLView.hidden = YES;
+    _isHangupSelf = YES;
     [_timeTimer invalidate];
     [_propertyTimer invalidate];
     [self _stopRing];
@@ -799,8 +813,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 }
 
 - (void)reloadCallSession {
-    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonHangup];
-    if (error) {
+    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonFailure];
+    if (!error) {
+        _isFailureSelf = YES;
         EMError *error = nil;
         NSString *chatter = _callSession.sessionChatter;
         EMCallSessionType type = _callSession.type;
