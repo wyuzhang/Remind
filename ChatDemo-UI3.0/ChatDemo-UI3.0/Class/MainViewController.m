@@ -774,7 +774,12 @@ static NSString *kGroupName = @"GroupName";
             }
             
 #warning 在后台不能进行视频通话
-        
+    
+            if(callSession.type == eCallSessionTypeVideo && ([[UIApplication sharedApplication] applicationState] != UIApplicationStateActive || ![CallViewController canVideo])){
+                error = [EMError errorWithCode:EMErrorInitFailure andDescription:NSLocalizedString(@"call.initFailed", @"Establish call failure")];
+                break;
+            }
+
 //#ifdef REMIND_AV
 //#else
 //            if(callSession.type == eCallSessionTypeVideo && ([[UIApplication sharedApplication] applicationState] != UIApplicationStateActive || ![CallViewController canVideo])){
@@ -956,6 +961,16 @@ static NSString *kGroupName = @"GroupName";
 
 //被叫收到主叫的提醒
 - (void)calledPartyReceiveRemind:(EMMessage *)message callSessionType:(EMCallSessionType)callSessionType {
+    if (message.isOfflineMessage) {
+        if (_callController) {
+            return;
+        }
+        EMCallSessionType callSessionType = (EMCallSessionType)[message.ext[CALL_TYPE] intValue];
+        NSString *chatter = message.ext[CALL_PARTY_USER];
+        [[RemindAvManager manager] sendRemindCMD:chatter sessionType:callSessionType];
+        return;
+    }
+    
 #if !TARGET_IPHONE_SIMULATOR
     UIApplicationState state = [[UIApplication sharedApplication] applicationState];
     switch (state) {

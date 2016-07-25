@@ -210,6 +210,9 @@ typedef NS_ENUM(int, CallMessageType) {
     if (![body isKindOfClass:[EMTextMessageBody class]]) {
         return CallMessageType_None;
     }
+    if (!message.ext[CALL_TYPE]) {
+        return CallMessageType_None;
+    }
     int callType = [message.ext[CALL_TYPE] intValue];
     if (callType == 0) {
         return CallMessageType_Audio;
