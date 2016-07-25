@@ -775,13 +775,13 @@ static NSString *kGroupName = @"GroupName";
             
 #warning 在后台不能进行视频通话
         
-#ifdef REMIND_AV
-#else
-            if(callSession.type == eCallSessionTypeVideo && ([[UIApplication sharedApplication] applicationState] != UIApplicationStateActive || ![CallViewController canVideo])){
-                error = [EMError errorWithCode:EMErrorInitFailure andDescription:NSLocalizedString(@"call.initFailed", @"Establish call failure")];
-                break;
-            }
-#endif
+//#ifdef REMIND_AV
+//#else
+//            if(callSession.type == eCallSessionTypeVideo && ([[UIApplication sharedApplication] applicationState] != UIApplicationStateActive || ![CallViewController canVideo])){
+//                error = [EMError errorWithCode:EMErrorInitFailure andDescription:NSLocalizedString(@"call.initFailed", @"Establish call failure")];
+//                break;
+//            }
+//#endif
             
 
             
