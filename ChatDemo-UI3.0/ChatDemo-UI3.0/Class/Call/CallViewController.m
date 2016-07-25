@@ -730,6 +730,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (void)rejectAction
 {
+    [[RemindAvManager manager] stopRunLoop];
     [_timeTimer invalidate];
     [self _stopRing];
     [self showHint:NSLocalizedString(@"call.rejected", @"Reject the call")];
@@ -744,6 +745,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 {
     [self showHint:NSLocalizedString(@"call.init", @"Is init the call...")];
     [self _stopRing];
+    [[RemindAvManager manager] stopRunLoop];
     AVAudioSession *audioSession = [AVAudioSession sharedInstance];
     _audioCategory = audioSession.category;
     if(![_audioCategory isEqualToString:AVAudioSessionCategoryPlayAndRecord]){
@@ -756,6 +758,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 - (void)hangupAction
 {
+    [[RemindAvManager manager] stopRunLoop];
     _openGLView.hidden = YES;
     [_timeTimer invalidate];
     [_propertyTimer invalidate];
