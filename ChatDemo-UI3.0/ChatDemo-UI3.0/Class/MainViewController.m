@@ -374,6 +374,9 @@ static NSString *kGroupName = @"GroupName";
  */
 -(void)didReceiveMessage:(EMMessage *)message
 {
+    if ([self isNoticeByRemind:message.ext]) {
+        return;
+    }
 #ifdef REDPACKET_AVALABLE
     NSDictionary *dict = message.ext;
     //  红包被抢的消息不提示，不震动
@@ -381,13 +384,7 @@ static NSString *kGroupName = @"GroupName";
         return;
     }
 #endif
-    BOOL needShowNotification = NO;
-    if ([self isNoticeByRemind:message.ext]) {
-        needShowNotification = YES;
-    }
-    else {
-        needShowNotification = (message.messageType != eMessageTypeChat) ? [self needShowNotification:message.conversationChatter] : YES;
-    }
+    BOOL needShowNotification = (message.messageType != eMessageTypeChat) ? [self needShowNotification:message.conversationChatter] : YES;
     if (needShowNotification) {
 #if !TARGET_IPHONE_SIMULATOR
         
@@ -958,8 +955,23 @@ static NSString *kGroupName = @"GroupName";
 #pragma mark - RemindAvDelegate
 
 //被叫收到主叫的提醒
-- (void)calledPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType {
-    
+- (void)calledPartyReceiveRemind:(EMMessage *)message callSessionType:(EMCallSessionType)callSessionType {
+#if !TARGET_IPHONE_SIMULATOR
+    UIApplicationState state = [[UIApplication sharedApplication] applicationState];
+    switch (state) {
+        case UIApplicationStateActive:
+            [self playSoundAndVibration];
+            break;
+        case UIApplicationStateInactive:
+            [self playSoundAndVibration];
+            break;
+        case UIApplicationStateBackground:
+            [self showNotificationWithMessage:message];
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 //主叫收到被叫的唤醒cmd，重发callSession

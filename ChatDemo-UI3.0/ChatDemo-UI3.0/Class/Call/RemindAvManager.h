@@ -17,7 +17,7 @@
 
 @optional
 
-- (void)calledPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType;
+- (void)calledPartyReceiveRemind:(EMMessage *)message callSessionType:(EMCallSessionType)callSessionType;
 
 - (void)callPartyReceiveRemind:(NSDictionary *)info callSessionType:(EMCallSessionType)callSessionType;
 

@@ -236,7 +236,7 @@ typedef NS_ENUM(int, CallMessageType) {
     EMCallSessionType type = (EMCallSessionType)callType;
     if (_delegate && [_delegate respondsToSelector:@selector(calledPartyReceiveRemind:callSessionType:)])
     {
-        [_delegate calledPartyReceiveRemind:message.ext callSessionType:type];
+        [_delegate calledPartyReceiveRemind:message callSessionType:type];
     }
     [self removeRemindTextMessage:message isNeedDeleteConversation:YES];
     return YES;
