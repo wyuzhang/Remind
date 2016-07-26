@@ -30,8 +30,8 @@
     UILabel *_remoteBitrateLabel;
     UILabel *_localBitrateLabel;
     NSTimer *_propertyTimer;
-    BOOL _isHangupSelf;
     BOOL _isNoResponseSelf;
+    BOOL _isHasSendRemind;
 }
 
 @end
@@ -603,14 +603,13 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self hideHud];
     [self _stopRing];
     if(error){
-        _statusLabel.text = NSLocalizedString(@"call.connectFailed", @"Connect failed");
 #ifdef REMIND_AV
         if (error.errorCode == EMErrorCallRemoteOffline) {
-            [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
-            [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
+            [self handleRemindManager];
             return;
         }
 #endif
+        _statusLabel.text = NSLocalizedString(@"call.connectFailed", @"Connect failed");
         [self _insertMessageWithStr:NSLocalizedString(@"call.failed", @"Call failed")];
         
         UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"error", @"Error") message:error.description delegate:self cancelButtonTitle:NSLocalizedString(@"ok", @"OK") otherButtonTitles:nil, nil];
@@ -619,17 +618,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
         
         return;
     }
-    
-    if (callSession.status == eCallSessionStatusRinging) {
-        
-    }
-    else if (callSession.status == eCallSessionStatusAnswering)
-    {
-    }
-    else if (callSession.status == eCallSessionStatusConnecting)
-    {
-    }
-    else if (callSession.status == eCallSessionStatusDisconnected) {
+    if (callSession.status == eCallSessionStatusDisconnected) {
         _statusLabel.text = NSLocalizedString(@"call.suspended", @"Call has been suspended");
         NSString *str = NSLocalizedString(@"call.over", @"Call end");
         if(_timeLength == 0)
@@ -644,21 +633,16 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 str = NSLocalizedString(@"call.in", @"In the call...");
             }
         }
-        if (reason == eCallReasonNull || (reason == eCallReasonNoResponse && !_isNoResponseSelf) || (reason == eCallReasonHangup && !_isHangupSelf)) {
-            //不在线 || 在后台
-//            [[RemindAvManager manager] stopRunLoop];
-//            [[RemindAvManager manager] showAlert:@"被叫用户不在线，请稍后重试"];
+        if ((reason == eCallReasonNoResponse && !_isNoResponseSelf)) {
+            //不在线
 #ifdef REMIND_AV
-            [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
-            [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
+            [self handleRemindManager];
 #endif
-        }
-        else if (reason == eCallReasonNoResponse && _isNoResponseSelf) {
-            _isNoResponseSelf = NO;
         }
         else {
             [self _insertMessageWithStr:str];
             [self _close];
+            _isHasSendRemind = NO;
         }
     }
     else if (callSession.status == eCallSessionStatusAccepted)
@@ -763,7 +747,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 {
     [[RemindAvManager manager] stopRunLoop];
     _openGLView.hidden = YES;
-    _isHangupSelf = YES;
     [_timeTimer invalidate];
     [_propertyTimer invalidate];
     [self _stopRing];
@@ -802,6 +785,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     }
 }
 
+#pragma mark - 处理音视频唤醒重发
+
 - (void)reloadCallSession {
     EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonNoResponse];
     if (!error) {
@@ -826,7 +811,6 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             _callSession = callSession;
 #warning 要提前设置视频通话对方图像的显示区域
             _callSession.displayView = _openGLView;
-
         }
     }
 }
@@ -839,6 +823,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     if (error) {
         [self _insertMessageWithStr:NSLocalizedString(@"call.over", @"Call end")];
         [self _close];
+    }
+}
+
+- (void)handleRemindManager {
+    if (!_isHasSendRemind) {
+        [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
+        [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
+        _isHasSendRemind = YES;
     }
 }
 
