@@ -31,7 +31,7 @@
     UILabel *_localBitrateLabel;
     NSTimer *_propertyTimer;
     BOOL _isHangupSelf;
-    BOOL _isFailureSelf;
+    BOOL _isNoResponseSelf;
 }
 
 @end
@@ -104,16 +104,6 @@
     else{
         _statusLabel.text = NSLocalizedString(@"call.connecting", @"Connecting...");
         [_actionView addSubview:_hangupButton];
-    }
-}
-
-- (void)runLoopEnd {
-    [self showHint:@"用户不在手机身边，请稍后再联系"];
-    [self _stopRing];
-    [[RemindAvManager manager] stopRunLoop];
-    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonReject];
-    if (error) {
-        [self _close];
     }
 }
 
@@ -654,7 +644,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 str = NSLocalizedString(@"call.in", @"In the call...");
             }
         }
-        if (reason == eCallReasonNull || reason == eCallReasonNoResponse || (reason == eCallReasonHangup && !_isHangupSelf)) {
+        if (reason == eCallReasonNull || (reason == eCallReasonNoResponse && !_isNoResponseSelf) || (reason == eCallReasonHangup && !_isHangupSelf)) {
             //不在线 || 在后台
 //            [[RemindAvManager manager] stopRunLoop];
 //            [[RemindAvManager manager] showAlert:@"被叫用户不在线，请稍后重试"];
@@ -663,8 +653,8 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             [[RemindAvManager manager] startRunLoop:self action:@selector(runLoopEnd)];
 #endif
         }
-        else if (reason == eCallReasonFailure) {
-            _isFailureSelf = NO;
+        else if (reason == eCallReasonNoResponse && _isNoResponseSelf) {
+            _isNoResponseSelf = NO;
         }
         else {
             [self _insertMessageWithStr:str];
@@ -813,9 +803,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 }
 
 - (void)reloadCallSession {
-    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonFailure];
+    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonNoResponse];
     if (!error) {
-        _isFailureSelf = YES;
+        _isNoResponseSelf = YES;
         EMError *error = nil;
         NSString *chatter = _callSession.sessionChatter;
         EMCallSessionType type = _callSession.type;
@@ -838,6 +828,17 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
             _callSession.displayView = _openGLView;
 
         }
+    }
+}
+
+- (void)runLoopEnd {
+    [self showHint:@"用户不在手机身边，请稍后再联系"];
+    [self _stopRing];
+    [[RemindAvManager manager] stopRunLoop];
+    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonNoResponse];
+    if (error) {
+        [self _insertMessageWithStr:NSLocalizedString(@"call.over", @"Call end")];
+        [self _close];
     }
 }
 

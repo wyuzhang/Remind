@@ -13,10 +13,8 @@
 //视频cmd
 #define REMIND_CMD_VIDEO                    @"remind_cmd_video"
 
-
-
 //超时时间
-#define CALL_TIMEOUT                        60.0
+#define CALL_TIMEOUT                        30.0
 
 
 typedef NS_ENUM(int, CallMessageType) {
