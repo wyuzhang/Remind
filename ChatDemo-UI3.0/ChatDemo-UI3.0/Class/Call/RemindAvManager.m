@@ -186,9 +186,29 @@ typedef NS_ENUM(int, CallMessageType) {
     [alertView show];
 }
 
-//- (void)showNotificationRemind:(NSDictionary *)info {
-//    
-//}
+- (void)showNotificationRemind:(NSDictionary *)userInfo {
+    CallMessageType callType = (CallMessageType)[userInfo[CALL_TYPE] intValue];
+    if (callType == CallMessageType_None) {
+        return;
+    }
+    NSString *callText = @"语音通话";
+    if (callType == CallMessageType_Video) {
+        callText = @"视频通话";
+    }
+    NSString *callPartyUser = userInfo[CALL_PARTY_USER];
+    NSString *text = [NSString stringWithFormat:@"%@向您发起%@",callPartyUser, callText];
+    
+    //发送本地推送
+    UILocalNotification *notification = [[UILocalNotification alloc] init];
+    notification.fireDate = [NSDate date]; //触发通知的时间
+    notification.alertAction = NSLocalizedString(@"open", @"Open");
+    notification.timeZone = [NSTimeZone defaultTimeZone];
+    notification.soundName = UILocalNotificationDefaultSoundName;
+    notification.alertBody = text;
+    notification.userInfo = userInfo;
+    //发送通知
+    [[UIApplication sharedApplication] scheduleLocalNotification:notification];
+}
 
 #pragma mark - private method
 

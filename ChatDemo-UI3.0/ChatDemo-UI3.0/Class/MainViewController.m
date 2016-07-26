@@ -758,13 +758,15 @@ static NSString *kGroupName = @"GroupName";
     
     NSLog(@"MainViewController   state --- %ld  reaseon  --- %ld",(long)callSession.status, (long)reason);
     
-//    if (callSession.status == eCallSessionStatusRinging && [[UIApplication sharedApplication] applicationState] != UIApplicationStateActive) {
-//        
-//        NSDictionary *info = @{CALL_TYPE:[NSNumber numberWithInt:callSession.type],CALL_PARTY_USER:callSession.sessionChatter};
-//        [[RemindAvManager manager] showNotificationRemind:nil];
-//        [self showNotificationWithMessage:nil];
-//        return;
-//    }
+    if (callSession.status == eCallSessionStatusRinging && [[UIApplication sharedApplication] applicationState] != UIApplicationStateActive) {
+        if (callSession.type == eCallSessionTypeVideo && ![CallViewController canVideo]) {
+            return;
+        }
+        NSString *currentUser = [[EaseMob sharedInstance].chatManager loginInfo][kSDKUsername];
+        NSDictionary *userInfo = @{CALL_TYPE:[NSNumber numberWithInt:callSession.type],CALL_PARTY_USER:callSession.sessionChatter, CALLED_PARTY_USER:currentUser};
+        [[RemindAvManager manager] showNotificationRemind:userInfo];
+        return;
+    }
     
     if (callSession.status == eCallSessionStatusConnected)
     {
@@ -812,8 +814,7 @@ static NSString *kGroupName = @"GroupName";
         } while (0);
         
         if (error) {
-            NSLog(@"error-- %d -- %@",error.errorCode,error.debugDescription);
-            [[EaseMob sharedInstance].callManager asyncEndCall:callSession.sessionId reason:eCallReasonNull];
+            [[EaseMob sharedInstance].callManager asyncEndCall:callSession.sessionId reason:eCallReasonHangup];
             return;
         }
     }
@@ -859,12 +860,12 @@ static NSString *kGroupName = @"GroupName";
     if (userInfo)
     {
         if ([self isNoticeByRemind:userInfo]) {
-            if (_callController) {
-                return;
-            }
-            EMCallSessionType callSessionType = (EMCallSessionType)[userInfo[CALL_TYPE] intValue];
-            NSString *chatter = userInfo[CALL_PARTY_USER];
-            [[RemindAvManager manager] sendRemindCMD:chatter sessionType:callSessionType];
+//            if (_callController) {
+//                return;
+//            }
+//            EMCallSessionType callSessionType = (EMCallSessionType)[userInfo[CALL_TYPE] intValue];
+//            NSString *chatter = userInfo[CALL_PARTY_USER];
+//            [[RemindAvManager manager] sendRemindCMD:chatter sessionType:callSessionType];
             return;
         }
         if ([self.navigationController.topViewController isKindOfClass:[ChatViewController class]]) {
@@ -979,23 +980,23 @@ static NSString *kGroupName = @"GroupName";
         [[RemindAvManager manager] sendRemindCMD:chatter sessionType:callSessionType];
         return;
     }
-    
-#if !TARGET_IPHONE_SIMULATOR
-    UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-    switch (state) {
-        case UIApplicationStateActive:
-            [self playSoundAndVibration];
-            break;
-        case UIApplicationStateInactive:
-            [self playSoundAndVibration];
-            break;
-        case UIApplicationStateBackground:
-            [self showNotificationWithMessage:message];
-            break;
-        default:
-            break;
-    }
-#endif
+//    
+//#if !TARGET_IPHONE_SIMULATOR
+//    UIApplicationState state = [[UIApplication sharedApplication] applicationState];
+//    switch (state) {
+//        case UIApplicationStateActive:
+//            [self playSoundAndVibration];
+//            break;
+//        case UIApplicationStateInactive:
+//            [self playSoundAndVibration];
+//            break;
+//        case UIApplicationStateBackground:
+//            [self showNotificationWithMessage:message];
+//            break;
+//        default:
+//            break;
+//    }
+//#endif
 }
 
 //主叫收到被叫的唤醒cmd，重发callSession

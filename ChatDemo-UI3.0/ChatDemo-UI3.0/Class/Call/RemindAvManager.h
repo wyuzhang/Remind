@@ -46,6 +46,6 @@
 
 - (void)showAlert:(NSString *)message;
 
-//- (void)showNotificationRemind:(NSDictionary *)info;
+- (void)showNotificationRemind:(NSDictionary *)userInfo;
 
 @end
