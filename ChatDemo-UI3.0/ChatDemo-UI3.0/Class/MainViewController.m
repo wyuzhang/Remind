@@ -758,6 +758,14 @@ static NSString *kGroupName = @"GroupName";
     
     NSLog(@"MainViewController   state --- %ld  reaseon  --- %ld",(long)callSession.status, (long)reason);
     
+//    if (callSession.status == eCallSessionStatusRinging && [[UIApplication sharedApplication] applicationState] != UIApplicationStateActive) {
+//        
+//        NSDictionary *info = @{CALL_TYPE:[NSNumber numberWithInt:callSession.type],CALL_PARTY_USER:callSession.sessionChatter};
+//        [[RemindAvManager manager] showNotificationRemind:nil];
+//        [self showNotificationWithMessage:nil];
+//        return;
+//    }
+    
     if (callSession.status == eCallSessionStatusConnected)
     {
         EMError *error = nil;
@@ -774,8 +782,7 @@ static NSString *kGroupName = @"GroupName";
             }
             
 #warning 在后台不能进行视频通话
-    
-            if(callSession.type == eCallSessionTypeVideo && ([[UIApplication sharedApplication] applicationState] != UIApplicationStateActive || ![CallViewController canVideo])){
+            if(([[UIApplication sharedApplication] applicationState] != UIApplicationStateActive || ![CallViewController canVideo])){
                 error = [EMError errorWithCode:EMErrorInitFailure andDescription:NSLocalizedString(@"call.initFailed", @"Establish call failure")];
                 break;
             }
@@ -805,7 +812,8 @@ static NSString *kGroupName = @"GroupName";
         } while (0);
         
         if (error) {
-            [[EaseMob sharedInstance].callManager asyncEndCall:callSession.sessionId reason:eCallReasonHangup];
+            NSLog(@"error-- %d -- %@",error.errorCode,error.debugDescription);
+            [[EaseMob sharedInstance].callManager asyncEndCall:callSession.sessionId reason:eCallReasonNull];
             return;
         }
     }

@@ -188,6 +188,10 @@ typedef NS_ENUM(int, CallMessageType) {
     [alertView show];
 }
 
+//- (void)showNotificationRemind:(NSDictionary *)info {
+//    
+//}
+
 #pragma mark - private method
 
 - (CallMessageType)isRemindAVCmd:(EMMessage *)cmdMessage {
