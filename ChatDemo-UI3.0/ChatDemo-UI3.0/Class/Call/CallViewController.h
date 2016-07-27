@@ -64,6 +64,7 @@ static CTCallCenter *g_callCenter;
 
 + (void)saveBitrate:(NSString*)value;
 
+//重新建立callSession
 - (void)reloadCallSession;
 
 @end

@@ -202,6 +202,7 @@ typedef NS_ENUM(int, CallMessageType) {
 
 #pragma mark - private method
 
+//判断cmd消息，当前操作是否为音视频操作
 - (CallMessageType)isRemindAVCmd:(EMMessage *)cmdMessage {
     id<IEMMessageBody> body = cmdMessage.messageBodies.firstObject;
     if (![body isKindOfClass:[EMCommandMessageBody class]]) {
@@ -217,6 +218,7 @@ typedef NS_ENUM(int, CallMessageType) {
     return CallMessageType_None;
 }
 
+//判断文本消息，当前操作是否为音视频操作
 - (CallMessageType)isRemindAVMessage:(EMMessage *)message {
     id<IEMMessageBody> body = message.messageBodies.firstObject;
     if (![body isKindOfClass:[EMTextMessageBody class]]) {
@@ -235,6 +237,7 @@ typedef NS_ENUM(int, CallMessageType) {
     return CallMessageType_None;
 }
 
+//删除提示消息
 - (void)removeRemindTextMessage:(EMMessage *)message isNeedDeleteConversation:(BOOL)isNeedDeleteConversation {
     EMConversation *conversation = [[EaseMob sharedInstance].chatManager conversationForChatter:message.conversationChatter conversationType:eConversationTypeChat];
     [conversation removeMessageWithId:message.messageId];
@@ -243,6 +246,7 @@ typedef NS_ENUM(int, CallMessageType) {
     }
 }
 
+//处理接收到的远程提醒文本类型的消息
 - (BOOL)handleRemindMessage:(EMMessage *)message {
     CallMessageType callType = [self isRemindAVMessage:message];
     if (callType == CallMessageType_None) {

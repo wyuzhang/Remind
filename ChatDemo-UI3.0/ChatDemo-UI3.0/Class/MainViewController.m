@@ -95,15 +95,6 @@ static NSString *kGroupName = @"GroupName";
     
 }
 
-- (void)configRemindAvManager:(BOOL)isConfig {
-    if (isConfig) {
-        [[RemindAvManager manager] addDelegate:self];
-    }
-    else {
-        [[RemindAvManager manager] removeDelegate];
-    }
-}
-
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
@@ -374,9 +365,6 @@ static NSString *kGroupName = @"GroupName";
  */
 -(void)didReceiveMessage:(EMMessage *)message
 {
-    if ([self isNoticeByRemind:message.ext]) {
-        return;
-    }
 #ifdef REDPACKET_AVALABLE
     NSDictionary *dict = message.ext;
     //  红包被抢的消息不提示，不震动
@@ -509,18 +497,10 @@ static NSString *kGroupName = @"GroupName";
         notification.soundName = UILocalNotificationDefaultSoundName;
         self.lastPlaySoundDate = [NSDate date];
     }
-    if ([self isNoticeByRemind:message.ext] &&
-        [message.messageBodies.firstObject isKindOfClass:[EMTextMessageBody class]]) {
-        EMTextMessageBody *body = (EMTextMessageBody *)message.messageBodies.firstObject;
-        notification.alertBody = body.text;
-        notification.userInfo = message.ext;
-    }
-    else {
-        NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
-        [userInfo setObject:[NSNumber numberWithInt:message.messageType] forKey:kMessageType];
-        [userInfo setObject:message.conversationChatter forKey:kConversationChatter];
-        notification.userInfo = userInfo;
-    }
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    [userInfo setObject:[NSNumber numberWithInt:message.messageType] forKey:kMessageType];
+    [userInfo setObject:message.conversationChatter forKey:kConversationChatter];
+    notification.userInfo = userInfo;
     
     //发送通知
     [[UIApplication sharedApplication] scheduleLocalNotification:notification];
@@ -859,6 +839,7 @@ static NSString *kGroupName = @"GroupName";
     if (userInfo)
     {
         if ([self isNoticeByRemind:userInfo]) {
+            //本地通知，为了音视频唤醒App，不做任何操作
             return;
         }
         if ([self.navigationController.topViewController isKindOfClass:[ChatViewController class]]) {
@@ -956,6 +937,16 @@ static NSString *kGroupName = @"GroupName";
 #else
     return NO;
 #endif
+}
+
+//配置RemindAvManager 的 delegate
+- (void)configRemindAvManager:(BOOL)isConfig {
+    if (isConfig) {
+        [[RemindAvManager manager] addDelegate:self];
+    }
+    else {
+        [[RemindAvManager manager] removeDelegate];
+    }
 }
 
 

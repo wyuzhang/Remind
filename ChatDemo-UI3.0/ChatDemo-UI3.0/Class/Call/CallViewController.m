@@ -788,6 +788,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
 
 #pragma mark - 处理音视频唤醒重发
 
+//重新建立callSession
 - (void)reloadCallSession {
     EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonNoResponse];
     if (!error) {
@@ -825,6 +826,7 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self _close];
 }
 
+//发送消息，远程通知离线的被叫方
 - (void)handleRemindManager {
     if (!_isHasSendRemind) {
         [[RemindAvManager manager] sendRemindMessage:_callSession.sessionChatter sessionType:_callSession.type];
