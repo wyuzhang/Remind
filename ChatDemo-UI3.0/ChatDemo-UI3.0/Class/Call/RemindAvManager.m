@@ -120,10 +120,7 @@ typedef NS_ENUM(int, CallMessageType) {
     [[EaseMob sharedInstance].chatManager asyncSendMessage:message progress:nil prepare:nil onQueue:nil completion:^(EMMessage *message, EMError *error) {
         
         if (error) {
-            __weak typeof(self) weakSelf = self;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf showAlert:@"cmd没有发送成功"];
-            });
+            NSLog(@"发送失败");
         }
         
     } onQueue:nil];
@@ -147,9 +144,7 @@ typedef NS_ENUM(int, CallMessageType) {
     __weak typeof(self) weakSelf = self;
     [[EaseMob sharedInstance].chatManager asyncSendMessage:message progress:nil prepare:nil onQueue:nil completion:^(EMMessage *message, EMError *error) {
         if (error) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf showAlert:@"cmd没有发送成功"];
-            });
+            NSLog(@"发送失败");
         }
         else {
             [weakSelf removeRemindTextMessage:message isNeedDeleteConversation:NO];
@@ -179,11 +174,6 @@ typedef NS_ENUM(int, CallMessageType) {
         _timer = nil;
         _runLoop = nil;
     }
-}
-
-- (void)showAlert:(NSString *)message {
-    UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:@"" message:message delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil, nil];
-    [alertView show];
 }
 
 - (void)showNotificationRemind:(NSDictionary *)userInfo {
