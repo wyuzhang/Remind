@@ -633,13 +633,14 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
                 str = NSLocalizedString(@"call.in", @"In the call...");
             }
         }
-        if ((reason == eCallReasonNoResponse && !_isNoResponseSelf)) {
+        if (reason == eCallReasonNull || (reason == eCallReasonNoResponse && !_isNoResponseSelf)) {
             //不在线
 #ifdef REMIND_AV
             [self handleRemindManager];
 #endif
         }
         else {
+            [[RemindAvManager manager] stopRunLoop];
             [self _insertMessageWithStr:str];
             [self _close];
             _isHasSendRemind = NO;
@@ -819,11 +820,9 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
     [self showHint:@"用户不在手机身边，请稍后再联系"];
     [self _stopRing];
     [[RemindAvManager manager] stopRunLoop];
-    EMError *error = [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonNoResponse];
-    if (error) {
-        [self _insertMessageWithStr:NSLocalizedString(@"call.over", @"Call end")];
-        [self _close];
-    }
+    [[EaseMob sharedInstance].callManager asyncEndCall:_callSession.sessionId reason:eCallReasonNoResponse];
+    [self _insertMessageWithStr:NSLocalizedString(@"call.over", @"Call end")];
+    [self _close];
 }
 
 - (void)handleRemindManager {

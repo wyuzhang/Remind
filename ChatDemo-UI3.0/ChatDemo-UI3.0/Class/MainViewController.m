@@ -959,7 +959,7 @@ static NSString *kGroupName = @"GroupName";
 - (BOOL)isNoticeByRemind:(NSDictionary *)info {
     
 #ifdef REMIND_AV
-    return info[CALL_TYPE];
+    return (info[CALL_TYPE] != nil);
 #else
     return NO;
 #endif
@@ -980,23 +980,6 @@ static NSString *kGroupName = @"GroupName";
         [[RemindAvManager manager] sendRemindCMD:chatter sessionType:callSessionType];
         return;
     }
-//    
-//#if !TARGET_IPHONE_SIMULATOR
-//    UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-//    switch (state) {
-//        case UIApplicationStateActive:
-//            [self playSoundAndVibration];
-//            break;
-//        case UIApplicationStateInactive:
-//            [self playSoundAndVibration];
-//            break;
-//        case UIApplicationStateBackground:
-//            [self showNotificationWithMessage:message];
-//            break;
-//        default:
-//            break;
-//    }
-//#endif
 }
 
 //主叫收到被叫的唤醒cmd，重发callSession
